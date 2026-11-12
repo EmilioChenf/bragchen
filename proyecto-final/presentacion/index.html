@@ -173,6 +173,18 @@ h2{font-size:76px;font-weight:400}
 .inv-row i{width:16px;height:16px;border-radius:5px}
 .inv-row b{font-variant-numeric:tabular-nums}
 
+/* bodega */
+.slide .bodega{position:absolute;inset:0;display:grid;grid-template-columns:1.15fr .85fr}
+.bphoto{margin:0;position:relative;overflow:hidden}
+.bphoto img{width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.12);transition:transform 7s cubic-bezier(.2,.6,.2,1)}
+.slide.active .bphoto img{transform:scale(1)}
+.bphoto::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 70%,rgba(46,47,128,.6))}
+.bphoto figcaption{position:absolute;left:32px;bottom:32px;background:var(--sun);color:#1B1C3D;font:700 18px var(--body);padding:10px 18px;border-radius:999px;z-index:1}
+.btext{padding:84px 80px 84px 56px;display:flex;flex-direction:column;justify-content:center}
+.blist{list-style:none;margin:36px 0 0;padding:0;display:grid;gap:18px}
+.blist li{border-left:3px solid var(--rose);padding-left:18px}
+.blist b{display:block;font:400 28px/1.15 var(--display)}
+.blist span{display:block;font-size:18px;color:var(--muted);margin-top:4px}
 /* marco legal */
 .legal{display:grid;grid-template-columns:.9fr 1.1fr;gap:34px;margin-top:40px}
 .lpath{display:grid;gap:10px;align-content:start}
@@ -386,6 +398,27 @@ h2{font-size:76px;font-weight:400}
     </div>
   </div>
   <div class="foot"><span>Precios referenciales en Guatemala · Modelo financiero InnovaArte (Anexo C)</span><span>09</span></div>
+</section>
+
+
+<!-- BODEGA -->
+<section class="slide" data-title="Inventario en bodega">
+  <div class="bodega">
+    <figure class="bphoto" data-a="fade" style="--d:0">
+      <img src="img/bodega.jpg" alt="Cajas de productos sublimables en bodega: tazas y pachones de aluminio">
+      <figcaption>Inventario en bodega</figcaption>
+    </figure>
+    <div class="btext">
+      <p class="eyebrow" data-a style="--d:1">Inversión inicial · Inventario</p>
+      <h2 data-a style="--d:2;font-size:60px">La inversión ya se ve en bodega.</h2>
+      <p class="lead" data-a style="--d:3;margin-top:24px">Productos sublimables listos para personalizar, comprados a distribuidores en Guatemala.</p>
+      <ul class="blist">
+        <li data-a style="--d:4"><b>Tazas de 11 y 13 oz</b><span>blancas y con interior y asa de color</span></li>
+        <li data-a style="--d:5"><b>Pachones de aluminio</b><span>750 ml, con tapa de rosca</span></li>
+        <li data-a style="--d:6"><b>Producción bajo pedido</b><span>el inventario se estampa solo cuando el cliente aprueba su diseño</span></li>
+      </ul>
+    </div>
+  </div>
 </section>
 
 <!-- 10 INGRESOS Y GASTOS -->
