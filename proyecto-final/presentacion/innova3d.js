@@ -1,5 +1,6 @@
-/* FIRMA 3D — visor de productos personalizados (three.js r128, global THREE).
-   FIRMA3D.create(canvas, opciones) -> { set(cambios), spin(bool), dispose() } */
+/* InnovaArte 3D — visor de productos personalizados (three.js r128, global THREE).
+   INNOVA3D.create(canvas, opciones) -> { set(cambios), spin(bool), dispose() }
+   Foto: imageMode 'marcos' (frameShape, frameCount, frameBorder) o 'completa' (cubre todo el producto). */
 (function () {
   'use strict';
   var PATTERNS = ['liso', 'rayas', 'puntos', 'ondas', 'confeti', 'cuadros'];
@@ -12,6 +13,51 @@
   function luminance(hex) {
     var c = parseInt(hex.slice(1), 16);
     return (0.299 * ((c >> 16) & 255) + 0.587 * ((c >> 8) & 255) + 0.114 * (c & 255)) / 255;
+  }
+
+
+  function shapePath(ctx, shape, cx, cy, s) {
+    ctx.beginPath();
+    var r = s / 2, i;
+    if (shape === 'circulo') { ctx.arc(cx, cy, r, 0, Math.PI * 2); }
+    else if (shape === 'cuadro' || shape === 'rectangulo') {
+      var w = shape === 'cuadro' ? s : s * 0.74, h = s, rr = s * 0.07, x = cx - w / 2, y = cy - h / 2;
+      ctx.moveTo(x + rr, y); ctx.lineTo(x + w - rr, y); ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+      ctx.lineTo(x + w, y + h - rr); ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+      ctx.lineTo(x + rr, y + h); ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+      ctx.lineTo(x, y + rr); ctx.quadraticCurveTo(x, y, x + rr, y);
+    } else if (shape === 'triangulo') {
+      var tr = s * 0.6; ctx.moveTo(cx, cy - tr);
+      ctx.lineTo(cx + tr * Math.cos(Math.PI / 6), cy + tr * 0.5 + s * 0.08); ctx.lineTo(cx - tr * Math.cos(Math.PI / 6), cy + tr * 0.5 + s * 0.08);
+    } else if (shape === 'estrella') {
+      for (i = 0; i < 10; i++) {
+        var a = -Math.PI / 2 + i * Math.PI / 5, rad = i % 2 ? r * 0.48 : r * 1.06;
+        ctx[i ? 'lineTo' : 'moveTo'](cx + rad * Math.cos(a), cy + 0.04 * s + rad * Math.sin(a));
+      }
+    } else { // corazón
+      var top = cy - s * 0.26;
+      ctx.moveTo(cx, cy + s * 0.48);
+      ctx.bezierCurveTo(cx - s * 0.12, cy + s * 0.36, cx - s * 0.56, cy + s * 0.08, cx - s * 0.52, top);
+      ctx.bezierCurveTo(cx - s * 0.48, cy - s * 0.58, cx - s * 0.06, cy - s * 0.58, cx, top + s * 0.02);
+      ctx.bezierCurveTo(cx + s * 0.06, cy - s * 0.58, cx + s * 0.48, cy - s * 0.58, cx + s * 0.52, top);
+      ctx.bezierCurveTo(cx + s * 0.56, cy + s * 0.08, cx + s * 0.12, cy + s * 0.36, cx, cy + s * 0.48);
+    }
+    ctx.closePath();
+  }
+  function coverDraw(ctx, img, x, y, w, h) {
+    var r = Math.max(w / img.width, h / img.height), iw = img.width * r, ih = img.height * r;
+    ctx.drawImage(img, x + (w - iw) / 2, y + (h - ih) / 2, iw, ih);
+  }
+  function drawFrame(ctx, img, shape, cx, cy, s, border) {
+    ctx.save();
+    if (border) { ctx.shadowColor = 'rgba(0,0,0,0.25)'; ctx.shadowBlur = s * 0.05; ctx.shadowOffsetY = s * 0.015; }
+    shapePath(ctx, shape, cx, cy, s);
+    ctx.fillStyle = border || 'rgba(0,0,0,0)'; if (border) ctx.fill();
+    ctx.restore();
+    ctx.save(); shapePath(ctx, shape, cx, cy, s); ctx.clip();
+    coverDraw(ctx, img, cx - s * 0.62, cy - s * 0.62, s * 1.24, s * 1.24);
+    ctx.restore();
+    if (border) { ctx.save(); shapePath(ctx, shape, cx, cy, s); ctx.lineWidth = Math.max(8, s * 0.045); ctx.strokeStyle = border; ctx.lineJoin = 'round'; ctx.stroke(); ctx.restore(); }
   }
 
   function drawDesign(ctx, W, H, st) {
@@ -44,24 +90,34 @@
     // zona de impresión al frente: u = 0.5 -> x = W/2
     var cx = W / 2, hasImg = !!st.image, txt = (st.text || '').trim();
     var txtColor = st.textColor || (luminance(base) > 0.6 ? '#141833' : '#FFFFFF');
-    if (hasImg) {
-      var img = st.image, box = H * (txt ? 0.46 : 0.62), r = Math.min(box / img.width, box / img.height);
-      var w = img.width * r, h = img.height * r, y = txt ? H * 0.2 : (H - h) / 2;
-      ctx.save();
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(cx - w / 2, y, w, h, 26); else ctx.rect(cx - w / 2, y, w, h);
-      ctx.clip(); ctx.drawImage(img, cx - w / 2, y, w, h); ctx.restore();
+    var mode = st.imageMode || 'marcos';
+    if (hasImg && mode === 'completa') {
+      coverDraw(ctx, st.image, 0, 0, W, H);
+      ctx.fillStyle = 'rgba(0,0,0,0.12)'; ctx.fillRect(0, 0, W, H * 0.02);
+    } else if (hasImg) {
+      var n = Math.max(1, Math.min(8, st.frameCount || 1)), slot = W / n;
+      var s = Math.min(txt ? H * 0.52 : H * 0.66, slot * (n === 1 ? 1 : 0.84));
+      var fy = txt ? H * 0.39 : H * 0.5;
+      for (var k = 0; k < n; k++) {
+        var fx = ((0.5 + k / n) % 1) * W;
+        [fx, fx - W, fx + W].forEach(function (x) {
+          if (x + s < 0 || x - s > W) return;
+          drawFrame(ctx, st.image, st.frameShape || 'corazon', x, fy, s, st.frameBorder === undefined ? '#FFFFFF' : st.frameBorder);
+        });
+      }
     }
     if (txt) {
-      var font = st.font || 'Bricolage Grotesque';
-      var size = font === 'Caveat' ? 190 : 150;
-      ctx.font = (font === 'Caveat' ? '700 ' : '800 ') + size + 'px "' + font + '", system-ui, sans-serif';
-      while (ctx.measureText(txt).width > W * 0.36 && size > 50) { size -= 6; ctx.font = (font === 'Caveat' ? '700 ' : '800 ') + size + 'px "' + font + '", system-ui, sans-serif'; }
+      var font = st.font || 'Montserrat';
+      var wt = font === 'Caveat' ? '700 ' : font === 'DM Serif Display' ? '400 ' : '800 ';
+      var size = font === 'Caveat' ? 190 : font === 'DM Serif Display' ? 170 : 140;
+      ctx.font = wt + size + 'px "' + font + '", Georgia, system-ui, sans-serif';
+      while (ctx.measureText(txt).width > W * 0.36 && size > 50) { size -= 6; ctx.font = wt + size + 'px "' + font + '", Georgia, system-ui, sans-serif'; }
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      var ty = hasImg ? H * 0.8 : H * 0.5;
-      ctx.fillStyle = txtColor; ctx.fillText(txt, cx, ty);
+      var ty = hasImg && mode !== 'completa' ? H * 0.84 : H * 0.5;
+      if (hasImg && mode === 'completa') { ctx.shadowColor = 'rgba(0,0,0,0.55)'; ctx.shadowBlur = 24; txtColor = st.textColor || '#FFFFFF'; }
+      ctx.fillStyle = txtColor; ctx.fillText(txt, cx, ty); ctx.shadowBlur = 0;
       if (st.subtitle) {
-        ctx.font = '600 52px "Instrument Sans", system-ui, sans-serif';
+        ctx.font = '600 52px "Montserrat", system-ui, sans-serif';
         ctx.globalAlpha = 0.85; ctx.fillText(st.subtitle, cx, ty + size * 0.62); ctx.globalAlpha = 1;
       }
     }
@@ -110,7 +166,7 @@
 
   function create(canvas, opts) {
     opts = opts || {};
-    var st = Object.assign({ product: 'termo', color: '#1d2a6b', pattern: 'liso', text: 'Valeria', font: 'Bricolage Grotesque', image: null }, opts.state || {});
+    var st = Object.assign({ product: 'termo', color: '#2E2F80', pattern: 'liso', text: 'Valeria', font: 'Montserrat', image: null, imageMode: 'marcos', frameShape: 'corazon', frameCount: 1, frameBorder: '#FFFFFF' }, opts.state || {});
     var renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     if (renderer.outputEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
@@ -214,5 +270,5 @@
     };
   }
 
-  window.FIRMA3D = { create: create, patterns: PATTERNS };
+  window.INNOVA3D = { create: create, patterns: PATTERNS, shapePath: shapePath };
 })();
